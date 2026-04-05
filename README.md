@@ -404,8 +404,9 @@ Contributions are welcome! Please follow these steps:
   - Research focus: AI-based medical diagnosis, disease detection
   
 - **Ms. Poonam Raval**
-  - Academic contributor in technology and engineering
-  - Focus: IoT, embedded systems, student innovation
+  - Student Contributor - Kookie AI Assistant Project
+  - Active development work on Kookie under Dr. Bharat Tank's guidance
+  - Focus: IoT, embedded systems, and AI-powered conversational interfaces
 
 ### Institution
 
