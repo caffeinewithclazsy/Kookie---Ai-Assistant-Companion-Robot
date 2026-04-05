@@ -119,7 +119,7 @@ Before you begin, ensure you have the following installed:
 - **Node.js** (v18 or higher recommended)
 - **npm** or **yarn** package manager
 - A modern web browser with microphone support (Chrome, Edge, Firefox)
-- **Gemini API Key** from [Google AI Studio](https://makersuite.google.com/app/apikey)
+- **Gemini API Key** from [Google AI for Developers](https://ai.google.dev/gemini-api/docs/api-key)
 
 ### Installation
 
