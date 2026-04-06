@@ -467,110 +467,123 @@ When users ask about Poonam Raval:
             workletNodeRef.current?.connect(audioContextRef.current!.destination);
           },
           onmessage: async (message: LiveServerMessage) => {
-            const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-            if (base64Audio && playbackContextRef.current) {
-              setStatus('SPEAKING');
-              const binaryString = atob(base64Audio);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-              }
-              
-              const pcm16 = new Int16Array(bytes.buffer);
-              const audioBuffer = playbackContextRef.current.createBuffer(1, pcm16.length, 24000);
-              const channelData = audioBuffer.getChannelData(0);
-              for (let i = 0; i < pcm16.length; i++) {
-                channelData[i] = pcm16[i] / 32768.0;
-              }
-
-              const source = playbackContextRef.current.createBufferSource();
-              source.buffer = audioBuffer;
-              source.connect(playbackContextRef.current.destination);
-              
-              const currentTime = playbackContextRef.current.currentTime;
-              if (nextPlayTimeRef.current < currentTime) {
-                // Reduced buffer from 0.2 to 0.05 for faster playback start on slow networks
-                nextPlayTimeRef.current = currentTime + 0.05;
-              }
-              source.start(nextPlayTimeRef.current);
-              nextPlayTimeRef.current += audioBuffer.duration;
-              
-              activeSourcesRef.current.push(source);
-
-              source.onended = () => {
-                activeSourcesRef.current = activeSourcesRef.current.filter(s => s !== source);
-                if (activeSourcesRef.current.length === 0) {
-                  setStatus('LISTENING');
+            try {
+              const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+              if (base64Audio && playbackContextRef.current) {
+                setStatus('SPEAKING');
+                const binaryString = atob(base64Audio);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
                 }
-              };
-            }
-
-            if (message.serverContent?.interrupted) {
-              setStatus('LISTENING');
-              setInterruptionCount(c => c + 1);
-              
-              if (playbackContextRef.current) {
-                try {
-                  const ctx = playbackContextRef.current;
-                  const osc = ctx.createOscillator();
-                  const gain = ctx.createGain();
-                  osc.type = 'sine';
-                  osc.frequency.setValueAtTime(400, ctx.currentTime);
-                  osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.15);
-                  gain.gain.setValueAtTime(0, ctx.currentTime);
-                  gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.02);
-                  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-                  osc.connect(gain);
-                  gain.connect(ctx.destination);
-                  osc.start(ctx.currentTime);
-                  osc.stop(ctx.currentTime + 0.15);
-                } catch (e) {
-                  console.error("Failed to play interruption sound", e);
+                
+                const pcm16 = new Int16Array(bytes.buffer);
+                const audioBuffer = playbackContextRef.current.createBuffer(1, pcm16.length, 24000);
+                const channelData = audioBuffer.getChannelData(0);
+                for (let i = 0; i < pcm16.length; i++) {
+                  channelData[i] = pcm16[i] / 32768.0;
                 }
-              }
 
-              activeSourcesRef.current.forEach(source => {
-                try { source.stop(); } catch (e) {}
-              });
-              activeSourcesRef.current = [];
-              if (playbackContextRef.current) {
-                nextPlayTimeRef.current = playbackContextRef.current.currentTime;
-              }
-            }
-            
-            if (message.serverContent?.modelTurn?.parts) {
-              const textParts = message.serverContent.modelTurn.parts.filter(p => p.text);
-              if (textParts.length > 0) {
-                const text = textParts.map(p => p.text).join('');
-                setFeed(prev => [...prev, { role: 'model', text }]);
-              }
-            }
+                const source = playbackContextRef.current.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(playbackContextRef.current.destination);
+                
+                const currentTime = playbackContextRef.current.currentTime;
+                if (nextPlayTimeRef.current < currentTime) {
+                  // Reduced buffer from 0.2 to 0.05 for faster playback start on slow networks
+                  nextPlayTimeRef.current = currentTime + 0.05;
+                }
+                source.start(nextPlayTimeRef.current);
+                nextPlayTimeRef.current += audioBuffer.duration;
+                
+                activeSourcesRef.current.push(source);
 
-            if (message.toolCall) {
-              const functionCalls = message.toolCall.functionCalls;
-              if (functionCalls && functionCalls.length > 0) {
-                const functionResponses = functionCalls.map(call => {
-                  if (call.name === 'setMood') {
-                    const newMood = call.args?.mood as Mood;
-                    if (newMood) {
-                      setMood(newMood);
-                    }
-                    return {
-                      name: call.name,
-                      id: call.id,
-                      response: { result: "Mood updated successfully" }
-                    };
+                source.onended = () => {
+                  activeSourcesRef.current = activeSourcesRef.current.filter(s => s !== source);
+                  if (activeSourcesRef.current.length === 0) {
+                    setStatus('LISTENING');
                   }
-                  return { name: call.name, id: call.id, response: { error: "Unknown function" } };
-                });
-                sessionPromise.then(session => {
-                  session.sendToolResponse({ functionResponses });
-                });
+                };
               }
+
+              if (message.serverContent?.interrupted) {
+                setStatus('LISTENING');
+                setInterruptionCount(c => c + 1);
+                
+                if (playbackContextRef.current) {
+                  try {
+                    const ctx = playbackContextRef.current;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.15);
+                  } catch (e) {
+                    console.error("Failed to play interruption sound", e);
+                  }
+                }
+
+                activeSourcesRef.current.forEach(source => {
+                  try { source.stop(); } catch (e) {}
+                });
+                activeSourcesRef.current = [];
+                if (playbackContextRef.current) {
+                  nextPlayTimeRef.current = playbackContextRef.current.currentTime;
+                }
+              }
+              
+              if (message.serverContent?.modelTurn?.parts) {
+                const textParts = message.serverContent.modelTurn.parts.filter(p => p.text);
+                if (textParts.length > 0) {
+                  const text = textParts.map(p => p.text).join('');
+                  setFeed(prev => [...prev, { role: 'model', text }]);
+                }
+              }
+
+              if (message.toolCall) {
+                const functionCalls = message.toolCall.functionCalls;
+                if (functionCalls && functionCalls.length > 0) {
+                  console.log('Tool call received:', functionCalls);
+                  const functionResponses = functionCalls.map(call => {
+                    if (call.name === 'setMood') {
+                      const newMood = call.args?.mood as Mood;
+                      if (newMood) {
+                        console.log('Setting mood to:', newMood);
+                        setMood(newMood);
+                      }
+                      return {
+                        name: call.name,
+                        id: call.id,
+                        response: { result: "Mood updated successfully" }
+                      };
+                    }
+                    return { name: call.name, id: call.id, response: { error: "Unknown function" } };
+                  });
+                  
+                  try {
+                    const session = await sessionPromise;
+                    console.log('Sending tool response...');
+                    await session.sendToolResponse({ functionResponses });
+                    console.log('Tool response sent successfully');
+                  } catch (error) {
+                    console.error('Failed to send tool response:', error);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error processing message:', error);
             }
           },
-          onclose: () => {
-            console.log('Connection closed');
+          onclose: (event) => {
+            console.log('Connection closed', event);
+            console.log('Close code:', event?.code, 'Reason:', event?.reason);
             setStatus('DISCONNECTED');
             setFeed(prev => [...prev, { 
               role: 'model', 
