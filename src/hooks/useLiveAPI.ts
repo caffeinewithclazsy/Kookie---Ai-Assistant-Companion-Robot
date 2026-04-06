@@ -95,6 +95,7 @@ export function useLiveAPI(personalityConfig: PersonalityConfig) {
         }
       };
 
+      setStatus('CONNECTING...');
       const sessionPromise = aiRef.current!.live.connect({
         model: "gemini-3.1-flash-live-preview",
         config: {
@@ -569,11 +570,34 @@ When users ask about Poonam Raval:
             }
           },
           onclose: () => {
-            sleep();
+            console.log('Connection closed');
+            setStatus('DISCONNECTED');
+            setFeed(prev => [...prev, { 
+              role: 'model', 
+              text: 'Connection lost. Please click "Put to Sleep" and then "Awaken Kookie" to reconnect.' 
+            }]);
+            // Don't call sleep() here - let user manually reconnect
+            setIsAwake(false);
           },
           onerror: (err) => {
             console.error("Live API Error:", err);
-            sleep();
+            setStatus('ERROR');
+            
+            let errorMessage = 'An error occurred with the connection.';
+            if (err.message) {
+              errorMessage = `Connection error: ${err.message}`;
+            }
+            
+            setFeed(prev => [...prev, { 
+              role: 'model', 
+              text: errorMessage + ' Please try reconnecting.' 
+            }]);
+            
+            // Don't call sleep() immediately - show error and let user decide
+            setTimeout(() => {
+              setIsAwake(false);
+              setStatus('RESTING');
+            }, 3000);
           }
         }
       });
